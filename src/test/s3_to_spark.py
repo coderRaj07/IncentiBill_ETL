@@ -9,9 +9,15 @@ from resources.dev.config import bucket_name
 load_dotenv()
 
 # Adding the packages required to get data from S3
+# os.environ[
+#     "PYSPARK_SUBMIT_ARGS"
+# ] = "--packages com.amazonaws:aws-java-sdk-s3:1.12.196,org.apache.hadoop:hadoop-aws:3.3.1 pyspark-shell"
+
+# Added this since my hadoop version is 3.3.4 in system 
+# Checked using check_spark_corresponding_hadoop.py and Maven website
 os.environ[
     "PYSPARK_SUBMIT_ARGS"
-] = "--packages com.amazonaws:aws-java-sdk-s3:1.12.196,org.apache.hadoop:hadoop-aws:3.3.1 pyspark-shell"
+] = "--packages com.amazonaws:aws-java-sdk-bundle:1.12.262,org.apache.hadoop:hadoop-aws:3.3.4 pyspark-shell"
 
 # Creating our Spark configuration
 conf = SparkConf().setAppName("S3toSpark")
