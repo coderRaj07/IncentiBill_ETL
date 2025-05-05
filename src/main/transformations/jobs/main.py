@@ -59,26 +59,26 @@ if csv_files:
                                         # += adds a list with another list
 
     # Check if table exists; if not, create it
-    cursor.execute(f"""
-        SELECT EXISTS (
-            SELECT FROM information_schema.tables 
-            WHERE table_schema = '{config.database_name}' 
-            AND table_name = '{config.product_staging_table}'
-        );
-    """)
-    table_exists = cursor.fetchone()[0]
+    # cursor.execute(f"""
+    #     SELECT EXISTS (
+    #         SELECT FROM information_schema.tables 
+    #         WHERE table_schema = '{config.database_name}' 
+    #         AND table_name = '{config.product_staging_table}'
+    #     );
+    # """)
+    # table_exists = cursor.fetchone()[0]
 
-    if not table_exists:
-        logger.warning(f"Table {config.database_name}.{config.product_staging_table} does not exist. Creating it.")
-        cursor.execute(f"""
-            CREATE TABLE {config.database_name}.{config.product_staging_table} (
-                file_name TEXT,
-                status CHAR(1)
-                -- add other columns as per your requirement
-            );
-        """)
-        connection.commit()
-        logger.info("Table created successfully.")
+    # if not table_exists:
+    #     logger.warning(f"Table {config.database_name}.{config.product_staging_table} does not exist. Creating it.")
+    #     cursor.execute(f"""
+    #         CREATE TABLE {config.database_name}.{config.product_staging_table} (
+    #             file_name TEXT,
+    #             status CHAR(1)
+    #             -- add other columns as per your requirement
+    #         );
+    #     """)
+    #     connection.commit()
+    #     logger.info("Table created successfully.")
     
     # Finally
     # total_csv_files = ['file1.csv', 'file2.csv', 'file3.csv']
