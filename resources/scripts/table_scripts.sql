@@ -1,6 +1,6 @@
 -- What if process failed in between, to check the status 
 CREATE TABLE product_staging_table (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     file_name VARCHAR(255),
     file_location VARCHAR(255),
     created_date TIMESTAMP ,
@@ -10,7 +10,7 @@ CREATE TABLE product_staging_table (
 
 
 CREATE TABLE customer (
-    customer_id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id SERIAL PRIMARY KEY,
     first_name VARCHAR(50),
     last_name VARCHAR(50),
     address VARCHAR(255),
@@ -68,7 +68,7 @@ VALUES
 
 -- product table
 CREATE TABLE product (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     name VARCHAR(255),
     current_price DECIMAL(10, 2),
     old_price DECIMAL(10, 2),
@@ -93,7 +93,7 @@ VALUES
 
 --sales team table
 CREATE TABLE sales_team (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     first_name VARCHAR(50),
     last_name VARCHAR(50),
     manager_id INT,
@@ -124,7 +124,7 @@ VALUES
 
 --s3 bucket table
 CREATE TABLE s3_bucket_info (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
     bucket_name VARCHAR(255),
     file_location VARCHAR(255),
     created_date TIMESTAMP ,
@@ -135,7 +135,7 @@ CREATE TABLE s3_bucket_info (
 
 --s3 bucket data
 INSERT INTO s3_bucket_info (bucket_name, status, created_date, updated_date)
-VALUES ('youtube-project-testing', 'active', NOW(), NOW());
+VALUES ('de-project-testing-aws', 'active', NOW(), NOW());
 
 
 --Data Mart customer
