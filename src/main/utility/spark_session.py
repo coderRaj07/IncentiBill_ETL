@@ -168,42 +168,10 @@ def write_file_info_to_pgsql(file_info):
         # Creating a cursor to interact with the database
         cursor = conn.cursor()
 
-        # Check if the table exists
-        cursor.execute(f"""
-        SELECT EXISTS (
-            SELECT 1
-            FROM information_schema.tables 
-            WHERE table_schema = 'public' 
-            AND table_name = '{table_name}'
-        );
-        """)
-        table_exists = cursor.fetchone()[0]
-        print(f"table exist {table_exists}")
-        if not table_exists:
-            # Table does not exist, create it
-            create_table_query = f"""
-            CREATE TABLE {table_name} (
-                id SERIAL PRIMARY KEY,
-                file_name VARCHAR(255) UNIQUE,
-                file_location TEXT,
-                created_date DATE,
-                formatted_date TIMESTAMP,
-                status CHAR(1)
-            );
-            """
-            cursor.execute(create_table_query)
-            logger.info(f"Table `{table_name}` created successfully.")
-
         # SQL query to insert metadata into the table, using "ON CONFLICT" to handle duplicates
         insert_query = f"""
-        INSERT INTO {table_name} (file_name, file_location, created_date, formatted_date, status)
-        VALUES (%s, %s, %s, %s, %s)
-        ON CONFLICT (file_name) 
-        DO UPDATE SET
-            file_location = EXCLUDED.file_location,
-            created_date = EXCLUDED.created_date,
-            formatted_date = EXCLUDED.formatted_date,
-            status = EXCLUDED.status;
+        INSERT INTO {table_name} (file_name, file_location, created_date, updated_date, status)
+        VALUES (%s, %s, %s, NOW(), %s);
         """
 
         # Insert or update each file's metadata into the table
@@ -212,7 +180,6 @@ def write_file_info_to_pgsql(file_info):
                 file["file_name"], 
                 file["file_location"], 
                 file["created_date"], 
-                file["formatted_date"], 
                 file["status"]
             ))
 
