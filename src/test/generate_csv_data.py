@@ -27,7 +27,7 @@ end_date = datetime(2025, 4, 30)
 
 file_location = config.spark_data_directory
 
-csv_file_path = os.path.join(file_location, "sales_data.csv")
+csv_file_path = os.path.join(file_location, "generated_csv_sales_data.csv")
 with open(csv_file_path, "w", newline="") as csvfile:
     csvwriter = csv.writer(csvfile)
     csvwriter.writerow(["customer_id", "store_id", "product_name", "sales_date", "sales_person_id", "price", "quantity", "total_cost"])

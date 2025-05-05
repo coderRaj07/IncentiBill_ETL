@@ -7,6 +7,7 @@ s3_client = s3_client_provider.get_client()
 
 local_file_path = config.sales_data_to_s3_local
 
+# generated less_column_csv_data, sales_data, extra_column_csv_data, date_wise_sales_data
 def upload_to_s3(s3_directory, s3_bucket, local_file_path):
     s3_prefix = f"{s3_directory}"
     try:
@@ -19,6 +20,6 @@ def upload_to_s3(s3_directory, s3_bucket, local_file_path):
     except Exception as e:
         raise e
 
-s3_directory = "sales_data/"
-s3_bucket = "de-project-testing"
+s3_directory = config.s3_source_directory
+s3_bucket = config.bucket_name
 upload_to_s3(s3_directory, s3_bucket, local_file_path)
