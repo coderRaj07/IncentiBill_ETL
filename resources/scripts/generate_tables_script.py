@@ -4,6 +4,10 @@ from src.main.utility.pg_sql_session import get_pgsql_connection
 def run_sql_script(file_name):
     try:
         # Resolve the full path of the SQL file
+        # __file__ refers to the current Python script file.
+        # os.path.abspath(__file__) gets the absolute path of the script file.
+        # os.path.dirname(...) gets the directory that contains the script.
+        # Result: script_dir holds the directory where the current script is located.
         script_dir = os.path.dirname(os.path.abspath(__file__))
         file_path = os.path.join(script_dir, file_name)
 
