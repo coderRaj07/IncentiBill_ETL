@@ -23,7 +23,7 @@ sales_persons = {
     123: [7, 8, 9]
 }
 
-file_location = config.spark_data_directory
+file_location = config.sales_data_for_s3
 
 if not os.path.exists(file_location):
     os.makedirs(file_location)

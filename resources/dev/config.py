@@ -64,4 +64,7 @@ customer_data_mart_local_file = os.path.join(BASE_DIR, "download_location", "dat
 sales_team_data_mart_local_file = os.path.join(BASE_DIR, "download_location", "data_engineering", "spark_data", "sales_team_data_mart")
 sales_team_data_mart_partitioned_local_file = os.path.join(BASE_DIR, "download_location", "data_engineering", "spark_data", "sales_partition_data")
 error_folder_path_local = os.path.join(BASE_DIR, "download_location", "data_engineering", "spark_data", "error_files")
-sales_data_to_s3_local = os.path.join(BASE_DIR, "download_location", "data_engineering", "spark_data", "sales_data_to_s3")
+sales_data_to_s3_local = os.path.join(BASE_DIR, "download_location", "spark_data", "sales_data_to_s3")
+
+
+sales_data_for_s3 = os.path.join(BASE_DIR, "sales_data_for_s3") # Generate dummy data to here and upload from here

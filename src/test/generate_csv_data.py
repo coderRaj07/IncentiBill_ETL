@@ -25,7 +25,7 @@ sales_persons = {
 start_date = datetime(2024, 10, 3)
 end_date = datetime(2025, 4, 30)
 
-file_location = config.spark_data_directory
+file_location = config.sales_data_for_s3
 
 csv_file_path = os.path.join(file_location, "generated_csv_sales_data.csv")
 with open(csv_file_path, "w", newline="") as csvfile:

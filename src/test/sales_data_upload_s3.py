@@ -5,7 +5,7 @@ from src.main.utility.encrypt_decrypt import *
 s3_client_provider = S3ClientProvider(decrypt(config.aws_access_key), decrypt(config.aws_secret_key))
 s3_client = s3_client_provider.get_client()
 
-local_file_path = config.sales_data_to_s3_local
+local_file_path = config.sales_data_for_s3
 
 # generated less_column_csv_data, sales_data, extra_column_csv_data, date_wise_sales_data
 def upload_to_s3(s3_directory, s3_bucket, local_file_path):
