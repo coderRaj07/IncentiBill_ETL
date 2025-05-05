@@ -1,4 +1,5 @@
 import findspark
+from resources.dev import config
 findspark.init()
 from functools import reduce
 import os
@@ -6,7 +7,6 @@ import boto3
 from dotenv import load_dotenv
 from pyspark.sql import SparkSession
 from src.main.utility.logging_config import *
-from resources.dev.config import bucket_name, mandatory_columns, product_staging_table
 
 # Load environment variables from .env
 load_dotenv()
@@ -79,7 +79,7 @@ def validate_and_merge_csvs(spark, csv_paths):
         df = spark.read.option("header", "true").option("inferSchema", "true").csv(csv_path)
         df_columns = set(df.columns)
 
-        mandatory_columns_ = {*mandatory_columns}
+        mandatory_columns_ = {*config.mandatory_columns}
         if mandatory_columns_.issubset(df_columns):
             logger.info(f"CSV {csv_path} is valid.")
             valid_dfs.append(df.select(*mandatory_columns_))
@@ -116,13 +116,13 @@ def move_to_invalid_folder(s3_path: str):
         return
 
     source_key = key_parts[3]
-    dest_key = f"sales_data_error/{filename}"
+    dest_key = f"{config.s3_error_directory}/{filename}"
 
     logger.info(f"Moving file from `{source_key}` to `{dest_key}`")
 
-    copy_source = {"Bucket": bucket_name, "Key": source_key}
-    s3.Object(bucket_name, dest_key).copy(copy_source)
-    s3.Object(bucket_name, source_key).delete()
+    copy_source = {"Bucket": config.bucket_name, "Key": source_key}
+    s3.Object(config.bucket_name, dest_key).copy(copy_source)
+    s3.Object(config.bucket_name, source_key).delete()
 
 
 def write_df_to_pgsql(df, table_name):
@@ -155,7 +155,7 @@ if __name__ == "__main__":
     spark = create_spark_session()
 
     # Define the S3 folder path
-    s3_folder_path = f"s3a://{bucket_name}/sales_data/"
+    s3_folder_path = f"s3a://{config.bucket_name}/sales_data/"
     logger.info(f"Scanning S3 folder: {s3_folder_path}")
 
     # List all CSV files in the S3 folder
@@ -168,6 +168,6 @@ if __name__ == "__main__":
     # Write merged DataFrame to PostgreSQL if available
     if merged_df:
         merged_df.show(5)
-        write_df_to_pgsql(merged_df, product_staging_table)
+        write_df_to_pgsql(merged_df, config.product_staging_table)
     else:
         logger.warning("No valid CSVs found. Nothing written to PostgreSQL.")
