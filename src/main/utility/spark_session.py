@@ -1,5 +1,6 @@
 import findspark
 from resources.dev import config
+from src.main.utility.pg_sql_session import get_pgsql_connection
 findspark.init()
 from functools import reduce
 import os
@@ -10,6 +11,8 @@ from pyspark.sql.functions import create_map, lit, col, to_json
 from pyspark.sql.types import StringType
 from itertools import chain
 from src.main.utility.logging_config import *
+import psycopg2
+from datetime import datetime
 
 # Load environment variables from .env
 load_dotenv()
@@ -77,6 +80,8 @@ def validate_and_merge_csvs(spark, csv_paths):
         Merged DataFrame of valid CSVs, or None if no valid CSVs are found.
     """
     valid_dfs = []
+    file_info = []  # For storing file-level metadata
+
     for csv_path in csv_paths:
         logger.info(f"Checking CSV: {csv_path}")
         df = spark.read.option("header", "true").option("inferSchema", "true").csv(csv_path)
@@ -97,16 +102,26 @@ def validate_and_merge_csvs(spark, csv_paths):
 
             df = df.select(*mandatory_columns_, "additional_columns")
             valid_dfs.append(df)
+
+            # Collect file metadata
+            current_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            file_info.append({
+                "file_name": csv_path.split("/")[-1],
+                "file_location": csv_path,
+                "created_date": datetime.now().strftime('%Y-%m-%d'),
+                "formatted_date": current_timestamp,
+                "status": "A",  # Status 'A' for active/in-progress
+            })
         else:
             logger.warning(f"CSV {csv_path} missing columns. Moving to invalid folder.")
             move_to_invalid_folder(csv_path)
 
     if not valid_dfs:
-        return None
+        return None, file_info
 
     # Merge all valid DataFrames into one using reduce and unionByName
     merged_df = reduce(lambda df1, df2: df1.unionByName(df2), valid_dfs)
-    return merged_df
+    return merged_df, file_info
 
 
 def move_to_invalid_folder(s3_path: str):
@@ -118,11 +133,7 @@ def move_to_invalid_folder(s3_path: str):
     """
     s3 = boto3.resource("s3")
 
-    # The s3_path.split("/") splits the given S3 path string 
-    # (e.g., s3://bucket/folder/file.csv) by slashes (/).
-    # [-1] grabs the last element from the split path, which would be the filename. 
-    # For example, for the path s3://bucket/folder/file.csv, filename would be "file.csv".
-    filename = s3_path.split("/")[-1] 
+    filename = s3_path.split("/")[-1]
 
     key_parts = s3_path.split("/", 3)
     if len(key_parts) < 4:
@@ -138,6 +149,86 @@ def move_to_invalid_folder(s3_path: str):
     s3.Object(config.bucket_name, dest_key).copy(copy_source)
     s3.Object(config.bucket_name, source_key).delete()
 
+
+def write_file_info_to_pgsql(file_info):
+    """
+    Write file metadata to PostgreSQL using psycopg2. 
+    If the table doesn't exist, it will be created.
+    If the table exists, it will be updated with new metadata.
+
+    Args:
+        file_info (List[Dict]): List of file-level metadata.
+    """
+    table_name = config.product_staging_table
+
+    try:
+        # Establishing a connection to the PostgreSQL database
+        conn = get_pgsql_connection()
+
+        # Creating a cursor to interact with the database
+        cursor = conn.cursor()
+
+        # Check if the table exists
+        cursor.execute(f"""
+        SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = '{table_name}'
+        );
+        """)
+        table_exists = cursor.fetchone()[0]
+        print(f"table exist {table_exists}")
+        if not table_exists:
+            # Table does not exist, create it
+            create_table_query = f"""
+            CREATE TABLE {table_name} (
+                id SERIAL PRIMARY KEY,
+                file_name VARCHAR(255) UNIQUE,
+                file_location TEXT,
+                created_date DATE,
+                formatted_date TIMESTAMP,
+                status CHAR(1)
+            );
+            """
+            cursor.execute(create_table_query)
+            logger.info(f"Table `{table_name}` created successfully.")
+
+        # SQL query to insert metadata into the table, using "ON CONFLICT" to handle duplicates
+        insert_query = f"""
+        INSERT INTO {table_name} (file_name, file_location, created_date, formatted_date, status)
+        VALUES (%s, %s, %s, %s, %s)
+        ON CONFLICT (file_name) 
+        DO UPDATE SET
+            file_location = EXCLUDED.file_location,
+            created_date = EXCLUDED.created_date,
+            formatted_date = EXCLUDED.formatted_date,
+            status = EXCLUDED.status;
+        """
+
+        # Insert or update each file's metadata into the table
+        for file in file_info:
+            cursor.execute(insert_query, (
+                file["file_name"], 
+                file["file_location"], 
+                file["created_date"], 
+                file["formatted_date"], 
+                file["status"]
+            ))
+
+        # Commit the transaction
+        conn.commit()
+        logger.info(f"File metadata written to PostgreSQL table `{table_name}` successfully.")
+
+    except Exception as e:
+        logger.error(f"Error writing file metadata to PostgreSQL: {str(e)}")
+        conn.rollback()  # Rollback in case of error
+    finally:
+        # Close the cursor and connection
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
 def write_df_to_pgsql(df, table_name):
     """
@@ -177,11 +268,15 @@ if __name__ == "__main__":
     logger.info(f"Found {len(csv_paths)} CSV file(s).")
 
     # Validate and merge CSV files
-    merged_df = validate_and_merge_csvs(spark, csv_paths)
+    merged_df, file_info = validate_and_merge_csvs(spark, csv_paths)
+
+    # Write file metadata to PostgreSQL
+    if file_info:
+        write_file_info_to_pgsql(file_info)
 
     # Write merged DataFrame to PostgreSQL if available
     if merged_df:
         merged_df.show(5)
-        write_df_to_pgsql(merged_df, config.product_staging_table)
+        # write_df_to_pgsql(merged_df, config.product_staging_table)
     else:
         logger.warning("No valid CSVs found. Nothing written to PostgreSQL.")
