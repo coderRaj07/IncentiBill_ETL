@@ -6,6 +6,9 @@ import os
 import boto3
 from dotenv import load_dotenv
 from pyspark.sql import SparkSession
+from pyspark.sql.functions import create_map, lit, col, to_json
+from pyspark.sql.types import StringType
+from itertools import chain
 from src.main.utility.logging_config import *
 
 # Load environment variables from .env
@@ -64,7 +67,7 @@ def list_csv_files_in_s3(spark, s3_path: str):
 def validate_and_merge_csvs(spark, csv_paths):
     """
     Validate and merge CSV files based on mandatory columns. 
-    Move error files to error location in s3
+    Move error files to error location in S3 and store extra columns in 'additional_columns'.
 
     Args:
         spark: SparkSession
@@ -82,7 +85,18 @@ def validate_and_merge_csvs(spark, csv_paths):
         mandatory_columns_ = {*config.mandatory_columns}
         if mandatory_columns_.issubset(df_columns):
             logger.info(f"CSV {csv_path} is valid.")
-            valid_dfs.append(df.select(*mandatory_columns_))
+
+            extra_columns = list(df_columns - mandatory_columns_)
+
+            if extra_columns:
+                logger.info(f"Found extra columns: {extra_columns}")
+                kv_pairs = list(chain.from_iterable((lit(c), col(c).cast(StringType())) for c in extra_columns))
+                df = df.withColumn("additional_columns", to_json(create_map(*kv_pairs)))
+            else:
+                df = df.withColumn("additional_columns", lit(None).cast(StringType()))
+
+            df = df.select(*mandatory_columns_, "additional_columns")
+            valid_dfs.append(df)
         else:
             logger.warning(f"CSV {csv_path} missing columns. Moving to invalid folder.")
             move_to_invalid_folder(csv_path)
