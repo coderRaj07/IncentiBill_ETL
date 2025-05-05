@@ -67,4 +67,4 @@ error_folder_path_local = os.path.join(BASE_DIR, "download_location", "data_engi
 sales_data_to_s3_local = os.path.join(BASE_DIR, "download_location", "spark_data", "sales_data_to_s3")
 
 
-sales_data_for_s3 = os.path.join(BASE_DIR, "sales_data_for_s3") # Generate dummy data to here and upload from here
+sales_data_for_s3 = os.path.join(BASE_DIR, "sales_data_for_s3") # Generate dummy data to here and upload to s3 from here
