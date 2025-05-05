@@ -10,8 +10,8 @@ This project is built to automate the flow of downloading sales data from S3, va
 ### 1. Clone the Repository
 
 ```bash
-git clone <your-repo-url>
-cd my_project
+git clone https://github.com/coderRaj07/Billwise_DE_Project
+cd Billwise_DE_Project
 ```
 
 ---
