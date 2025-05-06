@@ -9,14 +9,20 @@ def move_files_to_folder_in_s3(s3_path: str, destination_folder: str):
     Move a file from its current S3 location to a specified folder in the same bucket.
 
     Args:
-        s3_path (str): Full S3 path of the file to move (e.g., s3a://bucket/path/to/file.csv)
+        s3_path (str): Full S3 path of the file to move (e.g., s3a://bucket/path/to/file.csv (for dataframe related operations) or s3://bucket/path/to/file.csv)
         destination_folder (str): Destination folder/key prefix (e.g., "error_data/")
     """
     try:
         s3 = boto3.resource("s3")
 
-        # Extract only the object key from the s3a path
-        match = re.match(r"s3a://[^/]+/(.+)", s3_path)
+        # Check if the s3_path is in s3a format, otherwise treat it as a normal S3 path
+        if not s3_path.startswith("s3a://"):
+            s3_path = f"s3://{config.bucket_name}/{s3_path.lstrip('/')}"
+        else:
+            s3_path = f"s3a://{config.bucket_name}/{s3_path.lstrip('s3a://')}"
+
+        # Extract only the object key from the S3 path
+        match = re.match(r"s3(?:a)?://[^/]+/(.+)", s3_path)
         if not match:
             logger.error(f"Invalid S3 path format: {s3_path}")
             return
