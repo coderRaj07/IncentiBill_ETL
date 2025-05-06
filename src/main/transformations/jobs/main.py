@@ -7,6 +7,8 @@ import psycopg2
 from resources.dev import config
 from src.main.move.move_files import move_file_to_folder_in_s3
 from src.main.read.aws_read import S3Reader
+from src.main.read.database_read import DatabaseReader
+from src.main.transformations.jobs.dimension_tables_join import dimensions_table_join
 from src.main.utility.encrypt_decrypt import *
 from src.main.utility.pg_sql_session import get_pgsql_connection
 from src.main.utility.s3_client_object import *
@@ -125,7 +127,7 @@ if __name__ == "__main__":
 
         statement = f"""SELECT file_name
                         FROM {config.product_staging_table}
-                        WHERE file_name IN ({formatted_files}) AND status='I'
+                        WHERE file_name IN ({formatted_files}) AND status='A'
                         GROUP BY file_name"""
 
         logger.info(f"Dynamically created statement: {statement}")
@@ -136,9 +138,13 @@ if __name__ == "__main__":
             logger.warning("Previous run failed for some files: %s", [row[0] for row in data])
         else:
             # Proceed with validation and merge
+            
+            # move error csv files into error folder
+            # return merged csv with additional column details 
+            # and correct csv details (to be written db with status 'A')
             merged_df, file_info = validate_and_merge_csvs(spark, csv_paths)
 
-            # Write file metadata
+            # Write correct csv details into db with status 'A'
             if file_info:
                 DatabaseWriter().write_file_info_to_pgsql(file_info)
 
@@ -148,5 +154,26 @@ if __name__ == "__main__":
                 # DatabaseWriter().write_df_to_pgsql(merged_df, config.product_staging_table)
             else:
                 logger.warning("No valid CSVs found. Nothing written to PostgreSQL.")
+
+            logger.info("######## Loading customer_table into customer_table_df #########")
+            customer_table_df = DatabaseReader().create_df_from_pgsql(spark, config.customer_table_name)
+
+            logger.info("######## Loading product_table into product_table_df #########")
+            product_table_df = DatabaseReader().create_df_from_pgsql(spark, config.product_table)
+
+            logger.info("######## Loading product_staging_table into product_staging_table_df #########")
+            product_staging_table_df = DatabaseReader().create_df_from_pgsql(spark, config.product_staging_table)
+
+            logger.info("######## Loading sales_team_table into sales_team_table_df #########")
+            sales_team_table_df = DatabaseReader().create_df_from_pgsql(spark, config.sales_team_table)
+
+            logger.info("######## Loading store_table into store_table_df #########")
+            store_table_df = DatabaseReader().create_df_from_pgsql(spark, config.store_table)
+
+            s3_customer_store_sales_df_join = dimensions_table_join(merged_df, customer_table_df, store_table_df, sales_team_table_df)
+
+            logger.info("######## Final Enriched Data #########")
+            s3_customer_store_sales_df_join.display(5)
+
     else:
         logger.info("No CSV files found in S3.")
