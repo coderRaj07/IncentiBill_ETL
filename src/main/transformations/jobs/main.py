@@ -15,9 +15,11 @@ from src.main.utility.s3_client_object import *
 from src.main.utility.logging_config import logger
 from src.main.utility.spark_session import create_spark_session
 from src.main.write.database_write import DatabaseWriter
-from pyspark.sql.functions import create_map, lit, col, to_json
+from pyspark.sql.functions import create_map, lit, col, to_json, expr
 from pyspark.sql.types import StringType
 from itertools import chain
+
+from src.main.write.parquet_writer import ParquetWriter
 
 aws_access_key = config.aws_access_key
 aws_secret_key = config.aws_secret_key
@@ -103,11 +105,11 @@ if __name__ == "__main__":
     spark = create_spark_session()
 
     # Define the S3 folder path
-    s3_folder_path = f"s3a://{config.bucket_name}/{config.s3_source_directory}/"
-    logger.info(f"Scanning S3 folder: {s3_folder_path}")
+    s3_source_directory = f"s3a://{config.bucket_name}/{config.s3_source_directory}/"
+    logger.info(f"Scanning S3 folder: {s3_source_directory}")
 
     # List all CSV files in the S3 folder
-    csv_paths = S3Reader().list_csv_files_in_s3(spark, s3_folder_path)
+    csv_paths = S3Reader().list_csv_files_in_s3(spark, s3_source_directory)
     logger.info(f"Found {len(csv_paths)} CSV file(s).")
 
     # Extract file names from paths
@@ -125,9 +127,10 @@ if __name__ == "__main__":
         connection = get_pgsql_connection()
         cursor = connection.cursor()
 
+        # TODO: Make status "A"
         statement = f"""SELECT file_name
                         FROM {config.product_staging_table}
-                        WHERE file_name IN ({formatted_files}) AND status='A'
+                        WHERE file_name IN ({formatted_files}) AND status='I' 
                         GROUP BY file_name"""
 
         logger.info(f"Dynamically created statement: {statement}")
@@ -144,9 +147,10 @@ if __name__ == "__main__":
             # and correct csv details (to be written db with status 'A')
             merged_df, file_info = validate_and_merge_csvs(spark, csv_paths)
 
+            # TODO: Uncomment
             # Write correct csv details into db with status 'A'
-            if file_info:
-                DatabaseWriter().write_file_info_to_pgsql(file_info)
+            # if file_info:
+            #     DatabaseWriter().write_file_info_to_pgsql(file_info)
 
             # Write data to database
             if merged_df:
@@ -173,7 +177,63 @@ if __name__ == "__main__":
             s3_customer_store_sales_df_join = dimensions_table_join(merged_df, customer_table_df, store_table_df, sales_team_table_df)
 
             logger.info("######## Final Enriched Data #########")
-            s3_customer_store_sales_df_join.display(5)
+            s3_customer_store_sales_df_join.show()
 
+            # Write the customer data into customer data mart in parquet format
+            # File will be written to local first
+            # Move the RAW data to s3 bucket for reporting tool
+
+            logger.info("######## Write data into customer data mart#########")
+            final_customer_data_mart_df = (s3_customer_store_sales_df_join
+                                           .select("ct.customer_id"
+                                                   ,"ct.first_name"
+                                                   ,"ct.last_name"
+                                                   ,"ct.address"
+                                                   ,"ct.pincode"
+                                                   ,"phone_number"
+                                                   ,"sales_date"
+                                                   ,"total_cost")
+                                           )
+            
+            
+            logger.info("######## Final data for customer data mart#########")  
+            final_customer_data_mart_df.show()
+
+            parquet_writer = ParquetWriter("overwrite", "parquet")
+            s3_customer_datamart_directory = f"s3a://{config.bucket_name}/{config.s3_customer_datamart_directory}/"
+            parquet_writer.dataframe_writer(final_customer_data_mart_df, s3_customer_datamart_directory)
+            
+
+
+            # Sales Datamart
+            logger.info("######## Write data into sales data mart#########")
+            final_sales_team_data_mart_df = (s3_customer_store_sales_df_join
+                                           .select("store_id"
+                                                   ,"sales_person_id"
+                                                   ,"sales_person_first_name"
+                                                   ,"sales_person_last_name"
+                                                   ,"store_manager_name"
+                                                   ,"manager_id"
+                                                   ,"is_manager"
+                                                   ,"sales_person_address"
+                                                   ,"sales_date"
+                                                   ,"total_cost"
+                                                   ,expr("SUBSTRING(sales_date,1,7) as sales_month")
+                                                   )
+                                           )
+            
+            s3_sales_datamart_directory = f"s3a://{config.bucket_name}/{config.s3_sales_datamart_directory}/"
+            parquet_writer.dataframe_writer(final_sales_team_data_mart_df, s3_sales_datamart_directory)
+            
+            # Also writing the data into partitions
+            s3_sales_partitioned_datamart_directory = f"s3a://{config.bucket_name}/{config.s3_sales_partitioned_datamart_directory}/"
+            (final_sales_team_data_mart_df.write.format("parquet")
+                                                .option("header","true")
+                                                .mode("overwrite")
+                                                .partitionBy("sales_month","store_id")
+                                                .option("path",s3_sales_partitioned_datamart_directory)
+                                                .save()
+            )
+            
     else:
         logger.info("No CSV files found in S3.")
