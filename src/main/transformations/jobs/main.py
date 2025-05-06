@@ -39,67 +39,6 @@ def is_csv_empty(file_path):
         logger.error(f"Error reading file {file_path}: {e}")
         return True  # If there's an error, consider it empty
 
-
-# Check if the local directory has already a file
-# if file is there then check if the same file is present in the staging area
-# with status as "A". If so then don't delete and try to re-run
-# else give an error and not process the next file
-
-# csv_files = [file for file in os.listdir(config.local_directory) if file.endswith(".csv")]
-
-# connection = get_pgsql_connection()
-# cursor = connection.cursor()
-
-# total_csv_files = []
-
-# if csv_files:
-
-#     # Create a list of all csv files
-#     for file in csv_files:
-#         file_path = os.path.join(config.local_directory, file)
-        
-#         # if is_csv_empty(file_path):
-#         #     logger.info(f"CSV file {file} is empty. No record match.")
-#         #     continue  # Skip the empty file and move to the next one
-
-#         # Only add non-empty files
-#         total_csv_files.append(file)    # append adds single element to the list 
-#                                         # += adds a list with another list
-    
-#     # Finally
-#     # total_csv_files = ['file1.csv', 'file2.csv', 'file3.csv']
-#     # str(total_csv_files) = "['file1.csv', 'file2.csv', 'file3.csv']"
-
-#     # from 1st index (inclusive) to -2 index(inclusive) or say -1 index (exclusive)
-#     # str(total_csv_files)[1:-1] = "'file1.csv', 'file2.csv', 'file3.csv'" 
-
-#     # statement = f"""select distinct file_name 
-#                     # from de_project.product_staging_table
-#                     # where file_name in ({str(total_csv_files)[1:-1]}) and status='I'"""
-
-#     if total_csv_files:
-#         formatted_files = ", ".join(f"'{f}'" for f in total_csv_files)
-
-#         # Since we should avoid using distinct  
-#         statement = f"""select file_name
-#                         from {config.database_name}.{config.product_staging_table}
-#                         where file_name in ({formatted_files}) and status='I'
-#                         group by file_name"""
-        
-#         logger.info(f"Dynamically created statement: {statement}")
-#         cursor.execute(statement)
-#         data = cursor.fetchall()
-        
-#         if data:
-#             logger.info("Your last run was failed, please check")
-#         else:
-#             logger.info("No data found on database")
-#     else:
-#         logger.info("No non-empty CSV files to process")
-
-# else:
-#     logger.info("Last run was successful!!!")
-
 def validate_and_merge_csvs(spark, csv_paths):
     """
     Validate and merge CSV files based on mandatory columns. 
@@ -169,16 +108,45 @@ if __name__ == "__main__":
     csv_paths = S3Reader().list_csv_files_in_s3(spark, s3_folder_path)
     logger.info(f"Found {len(csv_paths)} CSV file(s).")
 
-    # Validate and merge CSV files
-    merged_df, file_info = validate_and_merge_csvs(spark, csv_paths)
+    # Extract file names from paths
+    s3_file_names = [path.split("/")[-1] for path in csv_paths]
 
-    # Write file metadata to PostgreSQL
-    if file_info:
-        DatabaseWriter().write_file_info_to_pgsql(file_info)
+    # Check if the s3 directory has already a file
+    # if file is there then check if the same file is present in the staging area
+    # with status as "A". If so then don't delete and try to re-run
+    # else give an error and not process the next file
 
-    # Write merged DataFrame to PostgreSQL if available
-    if merged_df:
-        merged_df.show(5)
-        # DatabaseWriter().write_df_to_pgsql(merged_df, config.product_staging_table)
+    # Step: Check in DB if any of these files already have status = 'I'
+    if s3_file_names:
+        formatted_files = ", ".join(f"'{f}'" for f in s3_file_names)
+
+        connection = get_pgsql_connection()
+        cursor = connection.cursor()
+
+        statement = f"""SELECT file_name
+                        FROM {config.product_staging_table}
+                        WHERE file_name IN ({formatted_files}) AND status='I'
+                        GROUP BY file_name"""
+
+        logger.info(f"Dynamically created statement: {statement}")
+        cursor.execute(statement)
+        data = cursor.fetchall()
+
+        if data:
+            logger.warning("Previous run failed for some files: %s", [row[0] for row in data])
+        else:
+            # Proceed with validation and merge
+            merged_df, file_info = validate_and_merge_csvs(spark, csv_paths)
+
+            # Write file metadata
+            if file_info:
+                DatabaseWriter().write_file_info_to_pgsql(file_info)
+
+            # Write data to database
+            if merged_df:
+                merged_df.show(5)
+                # DatabaseWriter().write_df_to_pgsql(merged_df, config.product_staging_table)
+            else:
+                logger.warning("No valid CSVs found. Nothing written to PostgreSQL.")
     else:
-        logger.warning("No valid CSVs found. Nothing written to PostgreSQL.")
+        logger.info("No CSV files found in S3.")

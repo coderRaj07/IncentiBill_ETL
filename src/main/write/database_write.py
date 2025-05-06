@@ -85,7 +85,7 @@ class DatabaseWriter:
             .option("user", os.getenv("DB_USER")) 
             .option("password", os.getenv("DB_PASSWORD")) 
             .option("driver", os.getenv("DB_DRIVER")) 
-            .mode("overwrite") 
+            .mode("append") 
             .save())
 
         logger.info(f"Data written to PostgreSQL table `{table_name}` successfully.")
