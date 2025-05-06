@@ -101,7 +101,7 @@ if __name__ == "__main__":
     spark = create_spark_session()
 
     # Define the S3 folder path
-    s3_folder_path = f"s3a://{config.bucket_name}/sales_data/"
+    s3_folder_path = f"s3a://{config.bucket_name}/{config.s3_source_directory}/"
     logger.info(f"Scanning S3 folder: {s3_folder_path}")
 
     # List all CSV files in the S3 folder
