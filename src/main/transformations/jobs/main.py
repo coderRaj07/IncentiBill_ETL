@@ -5,7 +5,7 @@ import csv
 import psycopg2
 
 from resources.dev import config
-from src.main.move.move_files import move_to_invalid_folder
+from src.main.move.move_files import move_file_to_folder_in_s3
 from src.main.read.aws_read import S3Reader
 from src.main.utility.encrypt_decrypt import *
 from src.main.utility.pg_sql_session import get_pgsql_connection
@@ -86,7 +86,7 @@ def validate_and_merge_csvs(spark, csv_paths):
             })
         else:
             logger.warning(f"CSV {csv_path} missing columns. Moving to invalid folder.")
-            move_to_invalid_folder(csv_path)
+            move_file_to_folder_in_s3(csv_path, config.s3_error_directory)
 
     if not valid_dfs:
         return None, file_info
