@@ -264,8 +264,13 @@ if __name__ == "__main__":
                 SET status = 'I'
                 WHERE file_name IN ({formatted_files})
             """
+            
+            connection = get_pgsql_connection()
+            cursor = connection.cursor()
             cursor.execute(update_query)
             connection.commit()
+            cursor.close()
+            connection.close()
 
     else:
         logger.info("No CSV files found in S3.")
