@@ -129,10 +129,9 @@ if __name__ == "__main__":
         connection = get_pgsql_connection()
         cursor = connection.cursor()
 
-        # TODO: Make status "A"
         statement = f"""SELECT file_name
                         FROM {config.product_staging_table}
-                        WHERE file_name IN ({formatted_files}) AND status='I' 
+                        WHERE file_name IN ({formatted_files}) AND status='A' 
                         GROUP BY file_name"""
 
         logger.info(f"Dynamically created statement: {statement}")
@@ -151,8 +150,8 @@ if __name__ == "__main__":
 
             # TODO: Uncomment
             # Write correct csv details into db with status 'A'
-            # if file_info:
-            #     DatabaseWriter().write_file_info_to_pgsql(file_info)
+            if file_info:
+                DatabaseWriter().write_file_info_to_pgsql(file_info)
 
             # Write data to database
             if merged_df:
@@ -258,12 +257,20 @@ if __name__ == "__main__":
             s3_source_directory = f"s3a://{config.bucket_name}/{config.s3_source_directory}/"
             move_files_to_folder_in_s3(config.s3_source_directory, config.s3_processed_directory)
 
-
+            # Make the status Inactive (means files are processed)
+            update_query = f"""
+                UPDATE {config.product_staging_table}
+                SET status = 'I'
+                WHERE file_name IN ({formatted_files})
+            """
+            cursor.execute(update_query)
+            connection.commit()
 
     else:
         logger.info("No CSV files found in S3.")
 
 
+    input("Press Enter to Terminate")    
 
 
 # Checking boto3 automatically loads aws credentials from .env 
