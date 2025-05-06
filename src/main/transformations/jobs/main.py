@@ -3,19 +3,21 @@ from functools import reduce
 import os
 import csv
 import psycopg2
-
+import boto3
 from resources.dev import config
-from src.main.move.move_files import move_file_to_folder_in_s3
+from src.main.move.move_files import move_files_to_folder_in_s3
 from src.main.read.aws_read import S3Reader
 from src.main.read.database_read import DatabaseReader
+from src.main.transformations.jobs.customer_mart_sql_tranform_write import customer_mart_calculation_table_write
 from src.main.transformations.jobs.dimension_tables_join import dimensions_table_join
+from src.main.transformations.jobs.sales_mart_sql_transform_write import sales_mart_calculation_table_write
 from src.main.utility.encrypt_decrypt import *
 from src.main.utility.pg_sql_session import get_pgsql_connection
 from src.main.utility.s3_client_object import *
 from src.main.utility.logging_config import logger
 from src.main.utility.spark_session import create_spark_session
 from src.main.write.database_write import DatabaseWriter
-from pyspark.sql.functions import create_map, lit, col, to_json, expr
+from pyspark.sql.functions import create_map, lit, col, to_json, expr, to_date
 from pyspark.sql.types import StringType
 from itertools import chain
 
@@ -90,7 +92,7 @@ def validate_and_merge_csvs(spark, csv_paths):
             })
         else:
             logger.warning(f"CSV {csv_path} missing columns. Moving to invalid folder.")
-            move_file_to_folder_in_s3(csv_path, config.s3_error_directory)
+            move_files_to_folder_in_s3(csv_path, config.s3_error_directory)
 
     if not valid_dfs:
         return None, file_info
@@ -183,7 +185,7 @@ if __name__ == "__main__":
             # File will be written to local first
             # Move the RAW data to s3 bucket for reporting tool
 
-            logger.info("######## Write data into customer data mart#########")
+            logger.info("######## Write data into customer data mart #########")
             final_customer_data_mart_df = (s3_customer_store_sales_df_join
                                            .select("ct.customer_id"
                                                    ,"ct.first_name"
@@ -196,7 +198,7 @@ if __name__ == "__main__":
                                            )
             
             
-            logger.info("######## Final data for customer data mart#########")  
+            logger.info("######## Final data for customer data mart #########")  
             final_customer_data_mart_df.show()
 
             parquet_writer = ParquetWriter("overwrite", "parquet")
@@ -206,7 +208,7 @@ if __name__ == "__main__":
 
 
             # Sales Datamart
-            logger.info("######## Write data into sales data mart#########")
+            logger.info("######## Write data into sales data mart #########")
             final_sales_team_data_mart_df = (s3_customer_store_sales_df_join
                                            .select("store_id"
                                                    ,"sales_person_id"
@@ -234,6 +236,49 @@ if __name__ == "__main__":
                                                 .option("path",s3_sales_partitioned_datamart_directory)
                                                 .save()
             )
-            
+
+            # Calculation for customer mart
+            # Findout the customer total purchase every month
+            # Write the data into pgsql table
+            logger.info("######## Calculating every month purchased amount of customer #########")
+            customer_mart_calculation_table_write(final_customer_data_mart_df)
+            logger.info("######## Calculation of customer mart is done and written into the table #########")
+
+            # Calculation for sales team mart
+            # Find out the total sales done by each sales person every month
+            # Give the top performer 1% incentive of sales of the month
+            # Rest sales person will get nothing
+            # Write the data into pgsql table
+            logger.info("######## Calculating every month sales #########")
+            sales_mart_calculation_table_write(final_sales_team_data_mart_df)
+            logger.info("######## Calculation of sales mart is done and written into the table #########")
+
+
+            # Move the files in s3_source_directory to s3_processed_directory
+            s3_source_directory = f"s3a://{config.bucket_name}/{config.s3_source_directory}/"
+            move_files_to_folder_in_s3(config.s3_source_directory, config.s3_processed_directory)
+
+
+
     else:
         logger.info("No CSV files found in S3.")
+
+
+
+
+# Checking boto3 automatically loads aws credentials from .env 
+# Since we are loading aws_creds in config and we are importing config here
+# So the aws creds get detected automatically 
+# If config gets commented then we will face errors
+# We don't have to explicitly pass through functions manually
+# keep the aws creds name same as in .env
+
+    # session = boto3.Session()
+    # credentials = session.get_credentials()
+
+    # # Print access key and session token to check the source
+    # print("Access Key:", credentials.access_key)
+    # print("Region:", session.region_name)
+
+    # # Check the AWS credentials file path and config path being used
+    # print("AWS Credentials file:", session.get_credentials().method)

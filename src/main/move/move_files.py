@@ -1,30 +1,35 @@
+import re
 import traceback
-from resources.dev import config
 import boto3
+from resources.dev import config
 from src.main.utility.logging_config import *
 
-def move_file_to_folder_in_s3(s3_path: str, destination_folder: str):
+def move_files_to_folder_in_s3(s3_path: str, destination_folder: str):
     """
-    Move a file from its current S3 path to a specified folder within the same S3 bucket.
+    Move a file from its current S3 location to a specified folder in the same bucket.
 
     Args:
-        s3_path (str): Full S3 path of the file to be moved.
-        destination_folder (str): Destination folder (key prefix) within the same bucket.
+        s3_path (str): Full S3 path of the file to move (e.g., s3a://bucket/path/to/file.csv)
+        destination_folder (str): Destination folder/key prefix (e.g., "error_data/")
     """
     try:
         s3 = boto3.resource("s3")
 
-        filename = s3_path.split("/")[-1]
-
-        key_parts = s3_path.split("/", 3)
-        if len(key_parts) < 4:
-            logger.error(f"Unexpected S3 path: {s3_path}")
+        # Extract only the object key from the s3a path
+        match = re.match(r"s3a://[^/]+/(.+)", s3_path)
+        if not match:
+            logger.error(f"Invalid S3 path format: {s3_path}")
             return
 
-        source_key = key_parts[3]
+        source_key = match.group(1)
+        filename = source_key.split("/")[-1]
         dest_key = f"{destination_folder.rstrip('/')}/{filename}"
 
-        logger.info(f"Moving file from `{source_key}` to `{dest_key}`")
+        if source_key == dest_key:
+            logger.info(f"Source and destination are the same for: {s3_path}")
+            return
+
+        logger.info(f"Moving file from `{source_key}` to `{dest_key}` in bucket `{config.bucket_name}`")
 
         copy_source = {"Bucket": config.bucket_name, "Key": source_key}
         s3.Object(config.bucket_name, dest_key).copy(copy_source)
