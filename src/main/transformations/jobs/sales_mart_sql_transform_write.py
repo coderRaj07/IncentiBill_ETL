@@ -5,9 +5,9 @@ from src.main.write.database_write import DatabaseWriter
 
 # Calculate total sales per sales person every month and write to PostgreSQL
 def sales_mart_calculation_table_write(final_sales_team_data_mart_df):
-    # Extract month from sales_date
+    # Extract month and year (e.g., '2024-10')
     df_with_month = final_sales_team_data_mart_df.withColumn(
-        "sales_month", trunc(col("sales_date"), "MM")  # returns first day of the month
+        "sales_month", date_format(col("sales_date"), "yyyy-MM")  # Format as 'YYYY-MM' sales_month VARCHAR(10), as defined in schema
     )
 
     # Window to calculate total sales per salesperson per store per month

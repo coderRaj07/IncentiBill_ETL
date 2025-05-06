@@ -8,7 +8,7 @@ from src.main.write.database_write import DatabaseWriter
 def customer_mart_calculation_table_write(final_customer_data_mart_df):
     # Convert to first day of month (e.g., 2024-05-01)
     df_with_month = final_customer_data_mart_df.withColumn(
-        "sales_date_month", trunc(col("sales_date"), "MM")  # returns first day of the month
+        "sales_date_month", trunc(col("sales_date"), "MM")  # returns first day of the month as per schema expectation as sales_date_month DATE,
     )
 
     # Create window for customer and month
