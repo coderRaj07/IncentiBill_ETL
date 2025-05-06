@@ -255,9 +255,10 @@ if __name__ == "__main__":
 
             # Move the files in s3_source_directory to s3_processed_directory
             s3_source_directory = f"s3a://{config.bucket_name}/{config.s3_source_directory}/"
-            move_files_to_folder_in_s3(config.s3_source_directory, config.s3_processed_directory)
+            move_files_to_folder_in_s3(s3_source_directory, config.s3_processed_directory)
 
             # Make the status Inactive (means files are processed)
+            logger.info(f"Print formatted files {formatted_files}")
             update_query = f"""
                 UPDATE {config.product_staging_table}
                 SET status = 'I'
