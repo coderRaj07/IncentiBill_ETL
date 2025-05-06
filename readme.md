@@ -50,10 +50,13 @@ Before running the main pipeline, generate your tables and dummy data:
 
 ```bash
 # Step 1: Generate tables
-python resources/scripts/generate_tables_script.py
+python3 -m  resources.scripts.generate_tables_script
 
 # Step 2: Populate dummy data
-python resources/scripts/generate_dummy_data_script.py
+python3 -m resources.scripts.generate_dummy_data_script
+
+# Step 3: Upload dummy data to s3
+python3 -m src.test.sales_data_upload_s3
 ```
 
 These scripts will output sample CSVs in a folder named `sales_data_for_s3/`:
