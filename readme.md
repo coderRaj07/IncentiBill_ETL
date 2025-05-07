@@ -85,7 +85,7 @@ python3 -m resources.scripts.generate_dummy_data_script
 python3 -m src.test.sales_data_upload_s3
 ```
 
-These scripts will output sample CSVs in a folder named `sales_data_for_s3/`:
+These scripts will output sample CSVs in a folder named `sales_data_for_s3/` and also upload the csvs to `sales_data` in s3 bucket named `de-project-testing-aws`:
 
 * `extra_column_csv_generated_sales_data_<date>.csv`
 * `generated_csv_sales_data.csv`
