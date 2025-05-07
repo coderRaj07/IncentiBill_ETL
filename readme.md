@@ -32,15 +32,15 @@ pip install -r resources/dev/requirement.txt
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/coderRaj07/Billwise_DE_Project
-cd Billwise_DE_Project
+git clone https://github.com/coderRaj07/IncentiBill_ETL
+cd IncentiBill_ETL
 ```
 
 ---
 
 ### 2. Set Environment Variables
 
-Refer to .env.example and create the .env file in the root directory (Billwise_DE_Project)
+Refer to .env.example and create the .env file in the root directory (IncentiBill_ETL)
 
 ---
 
@@ -107,7 +107,7 @@ The pipeline fetches files from **S3**, processes them with **PySpark**, and upd
 > `src/main/transformations/jobs/`
 
 ```bash
-# Run the pipeline from the root directory i.e, `Billwise_DE_Project`
+# Run the pipeline from the root directory i.e, `IncentiBill_ETL`
 python3 -m src.main.transformations.jobs.main
 ```
 ---
