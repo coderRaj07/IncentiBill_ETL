@@ -34,17 +34,6 @@ print(response)
 
 logger.info("List of buckets: %s", response["Buckets"])
 
-
-def is_csv_empty(file_path):
-    """Helper function to check if a CSV file is empty."""
-    try:
-        with open(file_path, newline='', encoding='utf-8') as f:
-            reader = csv.reader(f)
-            return not any(reader)  # Returns True if the file is empty
-    except Exception as e:
-        logger.error(f"Error reading file {file_path}: {e}")
-        return True  # If there's an error, consider it empty
-
 def validate_and_merge_csvs(spark, csv_paths):
     """
     Validate and merge CSV files based on mandatory columns. 
@@ -148,7 +137,6 @@ if __name__ == "__main__":
             # and correct csv details (to be written db with status 'A')
             merged_df, file_info = validate_and_merge_csvs(spark, csv_paths)
 
-            # TODO: Uncomment
             # Write correct csv details into db with status 'A'
             if file_info:
                 DatabaseWriter().write_file_info_to_pgsql(file_info)
@@ -156,7 +144,6 @@ if __name__ == "__main__":
             # Write data to database
             if merged_df:
                 merged_df.show(5)
-                # DatabaseWriter().write_df_to_pgsql(merged_df, config.product_staging_table)
             else:
                 logger.warning("No valid CSVs found. Nothing written to PostgreSQL.")
 
@@ -274,7 +261,6 @@ if __name__ == "__main__":
 
     else:
         logger.info("No CSV files found in S3.")
-
 
     input("Press Enter to Terminate")    
 

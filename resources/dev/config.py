@@ -19,8 +19,6 @@ s3_sales_datamart_directory = "sales_data_mart"
 s3_source_directory = "sales_data/"
 s3_error_directory = "sales_data_error/"
 s3_processed_directory = "sales_data_processed/"
-
-# TODO: check this one 
 s3_sales_partitioned_datamart_directory= "sales_partitioned_data_mart/"
 
 #Database credential
@@ -58,13 +56,4 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 # Spark data folder location
 spark_data_directory = os.path.join(BASE_DIR, "download_location", "data_engineering", "spark_data")
-# Download location
-local_directory = os.path.join(BASE_DIR, "download_location", "data_engineering", "spark_data", "file_from_s3")
-customer_data_mart_local_file = os.path.join(BASE_DIR, "download_location", "data_engineering", "spark_data", "customer_data_mart")
-sales_team_data_mart_local_file = os.path.join(BASE_DIR, "download_location", "data_engineering", "spark_data", "sales_team_data_mart")
-sales_team_data_mart_partitioned_local_file = os.path.join(BASE_DIR, "download_location", "data_engineering", "spark_data", "sales_partition_data")
-error_folder_path_local = os.path.join(BASE_DIR, "download_location", "data_engineering", "spark_data", "error_files")
-sales_data_to_s3_local = os.path.join(BASE_DIR, "download_location", "spark_data", "sales_data_to_s3")
-
-
 sales_data_for_s3 = os.path.join(BASE_DIR, "sales_data_for_s3") # Generate dummy data to here and upload to s3 from here
