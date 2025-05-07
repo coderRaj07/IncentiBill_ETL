@@ -156,7 +156,7 @@ src/test/                     # Spark & data generation tests
 ## ✅ Next Steps
 
 * Ensure you have **AWS credentials** set up and properly encrypted for S3 operations.
-* **PostgreSQL** should be running and accessible with the credentials from `config.py`.
+* **PostgreSQL** should be running and accessible with the credentials from `config.py`. Here we have used **Neon platform** for PgSQL related operations.
 * **PySpark** should be properly installed and compatible with your system's Hadoop version.
 
 ---
