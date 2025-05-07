@@ -126,6 +126,11 @@ python3 -m src.main.transformations.jobs.main
 5. **Processed Data**: Finally, all processed files are moved from `config.s3_source_directory` to `config.s3_processed_directory`, and the status is marked as "I" (Inactive means completed in the database).
 
 ---
+## 🧭 Project Architecture
+
+![Architecture Diagram](docs/architecture_diagram.png)
+
+---
 
 ## 📁 Directory Summary
 
