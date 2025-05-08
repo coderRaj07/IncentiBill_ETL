@@ -1,6 +1,42 @@
-
 # 📊 IncentiBill – Incentive-Driven Billing and Reward System
 
+## ❓ What
+
+* **IncentiBill** is an end-to-end **incentive-driven ETL pipeline** built with **PySpark, AWS S3, and PostgreSQL**, designed to automate the extraction, validation, transformation, and loading of daily sales data. 
+* It processes and stores data in customer and sales team datamarts and applies incentive logic to reward high-performing sales personnel. 
+* The pipeline includes real-world features like **fake data generation**, **data auditing**, **logging**, and **error handling**, making it production-grade and scalable for batch processing.
+
+---
+
+## 🎯 Why
+
+This project solves the challenge of **manual, error-prone sales data reporting** by automating the ingestion and transformation of raw CSV data into structured, query-optimized data marts. It enables:
+
+* Reliable **incentive calculation for top performers**.
+* Consistent **sales performance tracking**.
+* Scalable processing of **daily large-volume data** (\~15GB).
+* Clear visibility into **data quality and ingestion status** via staging tables and logging.
+* A strong foundation for **BI tools or dashboarding** systems.
+
+---
+
+## 🔍 How
+
+* Raw CSVs are uploaded to **AWS S3** and picked up by the pipeline.
+* PySpark handles the **ETL flow**, performing:
+
+  * Schema validation (extra/missing columns routed to error S3 bucket).
+  * Transformation into monthly summaries by customer and sales personnel.
+  * Incentive calculation based on defined thresholds.
+* Transformed data is stored into:
+
+  * **Customer Data Mart** (`customer_data_mart/`)
+  * **Sales Data Mart** (`sales_data_mart/`)
+  * **Partitioned Sales Data** (`sales_partitioned_data_mart/`)
+* Processed files are moved to `sales_data_processed/`, while errors go to `sales_data_error/`.
+* Dummy data and table creation scripts are included to simulate real-world testing scenarios.
+
+---
 ## 🚨 Pre-Project Setup
 
 Before starting this project, ensure that the following tools are installed on your system:
